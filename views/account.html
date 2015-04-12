@@ -7,6 +7,10 @@
 
 <h2>Your avatar</h2>
 
+<div id="camera" style="width:1280px; height:720px;"></div>
+<a href="javascript:void(take_snapshot())">Take Snapshot</a>
+<div id="result"></div>
+
 <input type="file" id="files"/>
 <p id="status">Please select a file</p>
 <div style="border:1px solid gray;width:300px;"  id="preview"><img src="/images/default.png" style="width:300px;" /></div>
@@ -25,32 +29,85 @@
 </form>
 
 <script type="text/javascript" src="/javascripts/s3upload.js"></script>
+<script type="text/javascript" src="/javascripts/webcam.js"></script>
 
 <script type="text/javascript">
+var status_elem = document.getElementById("status");
+var url_elem = document.getElementById("avatar_url");
+var preview_elem = document.getElementById("preview");
+
 function s3_upload(){
-    var status_elem = document.getElementById("status");
-    var url_elem = document.getElementById("avatar_url");
-    var preview_elem = document.getElementById("preview");
     var s3upload = new S3Upload({
         file_dom_selector: 'files',
         s3_sign_put_url: '/sign_s3',
         onProgress: function(percent, message) {
-            status_elem.innerHTML = 'Upload progress: ' + percent + '% ' + message;
+            msg = 'Upload progress: ' + percent + '% ' + message;
+            console.log(msg);
+            status_elem.innerHTML = msg;
         },
         onFinishS3Put: function(public_url) {
-            status_elem.innerHTML = 'Upload completed. Uploaded to: '+ public_url;
+            msg = 'Upload completed. Uploaded to: '+ public_url;
+            console.log(msg);
+            status_elem.innerHTML = msg;
             url_elem.value = public_url;
             preview_elem.innerHTML = '<img src="'+public_url+'" style="width:300px;" />';
         },
         onError: function(status) {
-            status_elem.innerHTML = 'Upload error: ' + status;
+            msg = 'Upload error: ' + status;
+            console.log(msg);
+            status_elem.innerHTML = msg;
         }
     });
+}
+
+function take_snapshot() {
+    Webcam.snap( function(image_data_uri) {
+        document.getElementById('result').innerHTML = '<img src="'+image_data_uri+'"/>';
+
+        var image_fmt = '';
+        if (image_data_uri.match(/^data\:image\/(\w+)/))
+            image_fmt = RegExp.$1;
+        else
+            throw "Cannot locate image format in Data URI";
+        var raw_image_data = image_data_uri.replace(/^data\:image\/\w+\;base64\,/, '');
+        var file = new Blob( [ Webcam.base64DecToArr(raw_image_data) ], {type: 'image/'+image_fmt} );
+        
+        var s3upload = new S3Upload({
+            file: file,
+            s3_object_name: Date.now() +'.jpg',
+            s3_sign_put_url: '/sign_s3',
+            onProgress: function(percent, message) {
+                msg = 'Upload progress: ' + percent + '% ' + message;
+                console.log(msg);
+                status_elem.innerHTML = msg;
+            },
+            onFinishS3Put: function(public_url) {
+                msg = 'Upload completed. Uploaded to: '+ public_url;
+                console.log(msg);
+                status_elem.innerHTML = msg;
+                url_elem.value = public_url;
+                preview_elem.innerHTML = '<img src="'+public_url+'" />';
+            },
+            onError: function(status) {
+                msg = 'Upload error: ' + status;
+                console.log(msg);
+                status_elem.innerHTML = msg;
+            }
+        });
+    } );
 }
 
 (function() {
     var input_element = document.getElementById("files");
     input_element.onchange = s3_upload;
+
+    Webcam.set({
+        width: 1280,
+        height: 720,
+        image_format: 'jpeg',
+        jpeg_quality: 90
+      });
+      Webcam.attach( '#camera' );
 })();
 </script>
 </body>

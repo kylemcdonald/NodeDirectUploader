@@ -6,7 +6,8 @@
 
     S3Upload.prototype.s3_sign_put_url = '/signS3put';
 
-    S3Upload.prototype.file_dom_selector = 'file_upload';
+    S3Upload.prototype.file_dom_selector = '';
+    S3Upload.prototype.file = null;
 
     S3Upload.prototype.onFinishS3Put = function(public_url) {
       return console.log('base.onFinishS3Put()', public_url);
@@ -25,7 +26,11 @@
       for (option in options) {
         this[option] = options[option];
       }
-      this.handleFileSelect(document.getElementById(this.file_dom_selector));
+      if(this.file) {
+        this.uploadFile(this.file);
+      } else {
+        this.handleFileSelect(document.getElementById(this.file_dom_selector));
+      }
     }
 
     S3Upload.prototype.handleFileSelect = function(file_element) {
@@ -82,10 +87,12 @@
       var this_s3upload, xhr;
       this_s3upload = this;
       xhr = this.createCORSRequest('PUT', url);
+      console.log('Uploading to S3');
       if (!xhr) {
         this.onError('CORS not supported');
       } else {
         xhr.onload = function() {
+        console.log('Loaded to S3: ' + xhr.status);
           if (xhr.status === 200) {
             this_s3upload.onProgress(100, 'Upload completed.');
             return this_s3upload.onFinishS3Put(public_url);
@@ -94,9 +101,11 @@
           }
         };
         xhr.onerror = function() {
+          console.log('XHR error.');
           return this_s3upload.onError('XHR error.');
         };
         xhr.upload.onprogress = function(e) {
+          console.log('XHR progress: ' + e.loaded);
           var percentLoaded;
           if (e.lengthComputable) {
             percentLoaded = Math.round((e.loaded / e.total) * 100);

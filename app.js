@@ -46,8 +46,9 @@ app.get('/account', function(req, res){
  * anticipated URL of the image.
  */
 app.get('/sign_s3', function(req, res){
-    aws.config.update({accessKeyId: AWS_ACCESS_KEY , secretAccessKey: AWS_SECRET_KEY });
-    var s3 = new aws.S3(); 
+    aws.config.update({ accessKeyId: AWS_ACCESS_KEY, secretAccessKey: AWS_SECRET_KEY});
+    aws.config.update({ signatureVersion: 'v4', region: 'eu-central-1' });
+    var s3 = new aws.S3();
     var s3_params = { 
         Bucket: S3_BUCKET, 
         Key: req.query.s3_object_name, 
